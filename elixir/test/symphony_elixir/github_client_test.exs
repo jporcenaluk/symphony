@@ -70,6 +70,7 @@ defmodule SymphonyElixir.GitHub.ClientTest do
       github_item(%{number: 1, status: "Todo", priority: "Low", created_at: "2026-01-01T00:00:00Z"}),
       github_item(%{number: 2, status: "Todo", priority: "High", created_at: "2026-01-02T00:00:00Z"}),
       github_item(%{number: 3, status: "Todo", priority: "High", created_at: "2026-01-01T00:00:00Z"}),
+      github_item(%{number: 10, status: "In progress", priority: "P0", created_at: "2026-01-04T00:00:00Z"}),
       github_item(%{number: 4, status: "Backlog", priority: "P0", created_at: "2025-01-01T00:00:00Z"}),
       github_item(%{number: 5, status: "Human Review", priority: "P0", created_at: "2025-01-01T00:00:00Z"}),
       github_item(%{
@@ -107,6 +108,7 @@ defmodule SymphonyElixir.GitHub.ClientTest do
 
     assert Enum.map(issues, & &1.identifier) == [
              "jporcenaluk/symphony#8",
+             "jporcenaluk/symphony#10",
              "jporcenaluk/symphony#3",
              "jporcenaluk/symphony#2",
              "jporcenaluk/symphony#1"
@@ -193,6 +195,7 @@ defmodule SymphonyElixir.GitHub.ClientTest do
                          "name" => "Status",
                          "options" => [
                            %{"id" => "todo", "name" => "Todo"},
+                           %{"id" => "in_progress", "name" => "In progress"},
                            %{"id" => "done", "name" => "Done"}
                          ]
                        }
@@ -208,11 +211,11 @@ defmodule SymphonyElixir.GitHub.ClientTest do
       end
     end
 
-    assert :ok = Client.update_issue_state_for_test("PVTI_1", "Done", graphql)
+    assert :ok = Client.update_issue_state_for_test("PVTI_1", "In Progress", graphql)
     assert_receive {:github_graphql, metadata_query, %{owner: "jporcenaluk", number: 2, fieldFirst: 50}}
     assert metadata_query =~ "ProjectStatusMetadata"
 
-    assert_receive {:github_graphql, mutation, %{projectId: "PVT_1", itemId: "PVTI_1", fieldId: "PVTSSF_status", optionId: "done"}}
+    assert_receive {:github_graphql, mutation, %{projectId: "PVT_1", itemId: "PVTI_1", fieldId: "PVTSSF_status", optionId: "in_progress"}}
 
     assert mutation =~ "updateProjectV2ItemFieldValue"
   end

@@ -238,10 +238,12 @@ defmodule SymphonyElixir.GitHub.Client do
   end
 
   defp normalize_candidate_items(items, tracker) do
+    active_states = normalized_active_states(tracker)
+
     items
     |> Enum.map(&normalize_project_item(&1, tracker))
     |> Enum.reject(&is_nil/1)
-    |> Enum.filter(&(&1.state in tracker_value(tracker, :active_states, [])))
+    |> Enum.filter(&active_issue_state?(&1, active_states))
     |> Enum.reject(&blocked_by_open_issue?/1)
     |> Enum.sort_by(&dispatch_sort_key(&1, tracker))
   end
@@ -334,6 +336,17 @@ defmodule SymphonyElixir.GitHub.Client do
     Enum.any?(blockers, &(&1.state == "OPEN"))
   end
 
+  defp active_issue_state?(%Issue{state: state}, active_states) when is_binary(state) do
+    MapSet.member?(active_states, Config.Schema.normalize_issue_state(state))
+  end
+
+  defp normalized_active_states(tracker) do
+    tracker
+    |> tracker_value(:active_states, [])
+    |> Enum.map(&Config.Schema.normalize_issue_state/1)
+    |> MapSet.new()
+  end
+
   defp dispatch_sort_key(issue, tracker) do
     {issue.priority || length(tracker_value(tracker, :priority_order, [])), issue.created_at || ~U[9999-12-31 00:00:00Z]}
   end
@@ -381,13 +394,20 @@ defmodule SymphonyElixir.GitHub.Client do
            get_in(response, ["data", "user", "projectV2"]),
          %{"id" => field_id, "options" => options} <-
            Enum.find(fields, &(Map.get(&1, "name") == tracker_value(tracker, :status_field, "Status"))),
-         %{"id" => option_id} <- Enum.find(options, &(Map.get(&1, "name") == state_name)) do
+         %{"id" => option_id} <- Enum.find(options, &status_option_matches?(&1, state_name)) do
       {:ok, project_id, field_id, option_id}
     else
       {:error, reason} -> {:error, reason}
       _ -> {:error, :github_status_option_not_found}
     end
   end
+
+  defp status_option_matches?(%{"name" => option_name}, state_name)
+       when is_binary(option_name) and is_binary(state_name) do
+    Config.Schema.normalize_issue_state(option_name) == Config.Schema.normalize_issue_state(state_name)
+  end
+
+  defp status_option_matches?(_option, _state_name), do: false
 
   defp parse_datetime(value) when is_binary(value) do
     case DateTime.from_iso8601(value) do
