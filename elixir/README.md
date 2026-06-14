@@ -69,8 +69,23 @@ cd symphony/elixir
 mise trust
 mise install
 mise exec -- mix setup
-mise exec -- mix build
-mise exec -- ./bin/symphony ./WORKFLOW.md
+mise exec -- make server
+```
+
+`make server` builds `bin/symphony`, checks that the selected dashboard port is free, and starts
+Symphony with the required guardrail acknowledgement. It defaults to
+`http://127.0.0.1:4000/`.
+
+Override the workflow file or dashboard port when needed:
+
+```bash
+mise exec -- make server WORKFLOW=/path/to/WORKFLOW.md PORT=4001
+```
+
+To inspect listening local TCP ports before choosing a port:
+
+```bash
+mise exec -- make ports
 ```
 
 ## Configuration
