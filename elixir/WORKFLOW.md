@@ -17,16 +17,15 @@ tracker:
     - Medium
     - P3
     - Low
-  required_labels: []
+  required_labels:
+    - symphony-ready
   active_states:
     - Todo
     - In Progress
-    - Merging
-    - Rework
   terminal_states:
     - Done
 polling:
-  interval_ms: 5000
+  interval_ms: 60000
 workspace:
   root: ~/code/symphony-workspaces
 hooks:
@@ -38,10 +37,10 @@ hooks:
   before_remove: |
     cd elixir && mise exec -- mix workspace.before_remove
 agent:
-  max_concurrent_agents: 10
-  max_turns: 20
+  max_concurrent_agents: 1
+  max_turns: 3
 codex:
-  command: codex --config shell_environment_policy.inherit=all --config 'model="gpt-5.5"' --config model_reasoning_effort=xhigh app-server
+  command: codex --config shell_environment_policy.inherit=all --config 'model="gpt-5.5"' --config model_reasoning_effort=medium app-server
   approval_policy: never
   thread_sandbox: workspace-write
   turn_sandbox_policy:
