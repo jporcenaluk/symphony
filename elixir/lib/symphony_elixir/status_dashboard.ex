@@ -1229,25 +1229,7 @@ defmodule SymphonyElixir.StatusDashboard do
   end
 
   defp humanize_codex_method("turn/completed", payload) do
-    status =
-      map_path(payload, ["params", "turn", "status"]) ||
-        map_path(payload, [:params, :turn, :status]) ||
-        "completed"
-
-    usage =
-      map_path(payload, ["params", "usage"]) ||
-        map_path(payload, [:params, :usage]) ||
-        map_path(payload, ["params", "tokenUsage"]) ||
-        map_path(payload, [:params, :tokenUsage]) ||
-        map_value(payload, ["usage", :usage])
-
-    usage_suffix =
-      case format_usage_counts(usage) do
-        nil -> ""
-        usage_text -> " (#{usage_text})"
-      end
-
-    "turn completed (#{status})#{usage_suffix}"
+    "turn completed (#{turn_completion_status(payload)})#{turn_completion_usage_suffix(payload)}"
   end
 
   defp humanize_codex_method("turn/failed", payload) do
@@ -1406,6 +1388,33 @@ defmodule SymphonyElixir.StatusDashboard do
       "#{method} (#{msg_type})"
     else
       method
+    end
+  end
+
+  defp turn_completion_status(payload) do
+    payload
+    |> extract_first_path([["params", "turn", "status"], [:params, :turn, :status]])
+    |> humanize_status()
+    |> case do
+      nil -> "completed"
+      status -> status
+    end
+  end
+
+  defp turn_completion_usage_suffix(payload) do
+    payload
+    |> extract_first_path([
+      ["params", "usage"],
+      [:params, :usage],
+      ["params", "tokenUsage"],
+      [:params, :tokenUsage],
+      ["usage"],
+      [:usage]
+    ])
+    |> format_usage_counts()
+    |> case do
+      nil -> ""
+      usage_text -> " (#{usage_text})"
     end
   end
 

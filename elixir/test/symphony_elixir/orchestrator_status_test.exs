@@ -1649,6 +1649,26 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
     assert StatusDashboard.humanize_codex_message(wrapped) =~ "in 10"
   end
 
+  test "status dashboard handles structured codex turn completion statuses" do
+    message = %{
+      event: :notification,
+      message: %{
+        "method" => "turn/completed",
+        "params" => %{
+          "turn" => %{
+            "status" => %{
+              "branch" => %{
+                "branchName" => "symphony-smoke-test"
+              }
+            }
+          }
+        }
+      }
+    }
+
+    assert StatusDashboard.humanize_codex_message(message) == "turn completed (completed)"
+  end
+
   test "status dashboard uses shell command line as exec command status text" do
     message = %{
       event: :notification,
