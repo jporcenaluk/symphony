@@ -10,9 +10,7 @@ defmodule SymphonyElixir.GitHub.CliTest do
     end
 
     assert {:ok, %{"data" => %{"viewer" => %{"login" => "jporcenaluk"}}}} =
-             Cli.graphql("query Viewer($first: Int!) { viewer { login } }", %{"first" => 10, "after" => nil},
-               runner: runner
-             )
+             Cli.graphql("query Viewer($first: Int!) { viewer { login } }", %{"first" => 10, "after" => nil}, runner: runner)
 
     assert_receive {:gh_called, ["api", "graphql", "-f", query_arg, "-F", first_arg], opts}
     assert query_arg == "query=query Viewer($first: Int!) { viewer { login } }"

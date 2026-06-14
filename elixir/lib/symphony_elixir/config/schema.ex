@@ -55,9 +55,7 @@ defmodule SymphonyElixir.Config.Schema do
       field(:repo_name, :string)
       field(:status_field, :string, default: "Status")
       field(:priority_field, :string, default: "Priority")
-      field(:priority_order, {:array, :string},
-        default: ["P0", "Urgent", "Critical", "P1", "High", "P2", "Medium", "P3", "Low"]
-      )
+      field(:priority_order, {:array, :string}, default: ["P0", "Urgent", "Critical", "P1", "High", "P2", "Medium", "P3", "Low"])
 
       field(:assignee, :string)
       field(:required_labels, {:array, :string}, default: [])

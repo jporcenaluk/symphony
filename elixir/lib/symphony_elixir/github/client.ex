@@ -335,8 +335,7 @@ defmodule SymphonyElixir.GitHub.Client do
   end
 
   defp dispatch_sort_key(issue, tracker) do
-    {issue.priority || length(tracker_value(tracker, :priority_order, [])),
-     issue.created_at || ~U[9999-12-31 00:00:00Z]}
+    {issue.priority || length(tracker_value(tracker, :priority_order, [])), issue.created_at || ~U[9999-12-31 00:00:00Z]}
   end
 
   defp create_comment(issue_id, body, graphql) do

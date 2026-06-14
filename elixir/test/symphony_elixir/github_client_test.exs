@@ -212,8 +212,7 @@ defmodule SymphonyElixir.GitHub.ClientTest do
     assert_receive {:github_graphql, metadata_query, %{owner: "jporcenaluk", number: 2, fieldFirst: 50}}
     assert metadata_query =~ "ProjectStatusMetadata"
 
-    assert_receive {:github_graphql, mutation,
-                    %{projectId: "PVT_1", itemId: "PVTI_1", fieldId: "PVTSSF_status", optionId: "done"}}
+    assert_receive {:github_graphql, mutation, %{projectId: "PVT_1", itemId: "PVTI_1", fieldId: "PVTSSF_status", optionId: "done"}}
 
     assert mutation =~ "updateProjectV2ItemFieldValue"
   end
