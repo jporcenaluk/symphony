@@ -12,11 +12,11 @@ defmodule SymphonyElixir.TestSupport do
       alias SymphonyElixir.Config
       alias SymphonyElixir.HttpServer
       alias SymphonyElixir.Linear.Client
-      alias SymphonyElixir.Linear.Issue
       alias SymphonyElixir.Orchestrator
       alias SymphonyElixir.PromptBuilder
       alias SymphonyElixir.StatusDashboard
       alias SymphonyElixir.Tracker
+      alias SymphonyElixir.Tracker.Issue
       alias SymphonyElixir.Workflow
       alias SymphonyElixir.WorkflowStore
       alias SymphonyElixir.Workspace
@@ -96,6 +96,13 @@ defmodule SymphonyElixir.TestSupport do
           tracker_endpoint: "https://api.linear.app/graphql",
           tracker_api_token: "token",
           tracker_project_slug: "project",
+          tracker_owner: nil,
+          tracker_project_number: nil,
+          tracker_repo_owner: nil,
+          tracker_repo_name: nil,
+          tracker_status_field: "Status",
+          tracker_priority_field: "Priority",
+          tracker_priority_order: ["P0", "Urgent", "Critical", "P1", "High", "P2", "Medium", "P3", "Low"],
           tracker_assignee: nil,
           tracker_required_labels: [],
           tracker_active_states: ["Todo", "In Progress"],
@@ -134,6 +141,13 @@ defmodule SymphonyElixir.TestSupport do
     tracker_endpoint = Keyword.get(config, :tracker_endpoint)
     tracker_api_token = Keyword.get(config, :tracker_api_token)
     tracker_project_slug = Keyword.get(config, :tracker_project_slug)
+    tracker_owner = Keyword.get(config, :tracker_owner)
+    tracker_project_number = Keyword.get(config, :tracker_project_number)
+    tracker_repo_owner = Keyword.get(config, :tracker_repo_owner)
+    tracker_repo_name = Keyword.get(config, :tracker_repo_name)
+    tracker_status_field = Keyword.get(config, :tracker_status_field)
+    tracker_priority_field = Keyword.get(config, :tracker_priority_field)
+    tracker_priority_order = Keyword.get(config, :tracker_priority_order)
     tracker_assignee = Keyword.get(config, :tracker_assignee)
     tracker_required_labels = Keyword.get(config, :tracker_required_labels)
     tracker_active_states = Keyword.get(config, :tracker_active_states)
@@ -173,6 +187,13 @@ defmodule SymphonyElixir.TestSupport do
         "  endpoint: #{yaml_value(tracker_endpoint)}",
         "  api_key: #{yaml_value(tracker_api_token)}",
         "  project_slug: #{yaml_value(tracker_project_slug)}",
+        "  owner: #{yaml_value(tracker_owner)}",
+        "  project_number: #{yaml_value(tracker_project_number)}",
+        "  repo_owner: #{yaml_value(tracker_repo_owner)}",
+        "  repo_name: #{yaml_value(tracker_repo_name)}",
+        "  status_field: #{yaml_value(tracker_status_field)}",
+        "  priority_field: #{yaml_value(tracker_priority_field)}",
+        "  priority_order: #{yaml_value(tracker_priority_order)}",
         "  assignee: #{yaml_value(tracker_assignee)}",
         "  required_labels: #{yaml_value(tracker_required_labels)}",
         "  active_states: #{yaml_value(tracker_active_states)}",

@@ -49,6 +49,14 @@ defmodule SymphonyElixir.Config.Schema do
       field(:endpoint, :string, default: "https://api.linear.app/graphql")
       field(:api_key, :string)
       field(:project_slug, :string)
+      field(:owner, :string)
+      field(:project_number, :integer)
+      field(:repo_owner, :string)
+      field(:repo_name, :string)
+      field(:status_field, :string, default: "Status")
+      field(:priority_field, :string, default: "Priority")
+      field(:priority_order, {:array, :string}, default: ["P0", "Urgent", "Critical", "P1", "High", "P2", "Medium", "P3", "Low"])
+
       field(:assignee, :string)
       field(:required_labels, {:array, :string}, default: [])
       field(:active_states, {:array, :string}, default: ["Todo", "In Progress"])
@@ -60,7 +68,23 @@ defmodule SymphonyElixir.Config.Schema do
       schema
       |> cast(
         attrs,
-        [:kind, :endpoint, :api_key, :project_slug, :assignee, :required_labels, :active_states, :terminal_states],
+        [
+          :kind,
+          :endpoint,
+          :api_key,
+          :project_slug,
+          :owner,
+          :project_number,
+          :repo_owner,
+          :repo_name,
+          :status_field,
+          :priority_field,
+          :priority_order,
+          :assignee,
+          :required_labels,
+          :active_states,
+          :terminal_states
+        ],
         empty_values: []
       )
       |> update_change(:required_labels, fn labels ->

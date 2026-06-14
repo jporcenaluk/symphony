@@ -1,6 +1,6 @@
-defmodule SymphonyElixir.Linear.Issue do
+defmodule SymphonyElixir.Tracker.Issue do
   @moduledoc """
-  Normalized Linear issue representation used by the orchestrator.
+  Normalized tracker issue representation used by the orchestrator.
   """
 
   defstruct [
@@ -13,12 +13,19 @@ defmodule SymphonyElixir.Linear.Issue do
     :branch_name,
     :url,
     :assignee_id,
+    :tracker_item_id,
     blocked_by: [],
     labels: [],
     assigned_to_worker: true,
     created_at: nil,
     updated_at: nil
   ]
+
+  @type blocker :: %{
+          id: String.t() | nil,
+          identifier: String.t() | nil,
+          state: String.t() | nil
+        }
 
   @type t :: %__MODULE__{
           id: String.t() | nil,
@@ -30,6 +37,8 @@ defmodule SymphonyElixir.Linear.Issue do
           branch_name: String.t() | nil,
           url: String.t() | nil,
           assignee_id: String.t() | nil,
+          tracker_item_id: String.t() | nil,
+          blocked_by: [blocker()],
           labels: [String.t()],
           assigned_to_worker: boolean(),
           created_at: DateTime.t() | nil,

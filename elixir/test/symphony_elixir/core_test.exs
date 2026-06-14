@@ -88,6 +88,54 @@ defmodule SymphonyElixir.CoreTest do
     assert {:error, {:unsupported_tracker_kind, "123"}} = Config.validate!()
   end
 
+  test "github tracker config validates required project and repo fields" do
+    write_workflow_file!(Workflow.workflow_file_path(),
+      tracker_kind: "github",
+      tracker_owner: "jporcenaluk",
+      tracker_project_number: 2,
+      tracker_repo_owner: "jporcenaluk",
+      tracker_repo_name: "symphony",
+      tracker_status_field: "Status",
+      tracker_priority_field: "Priority",
+      tracker_active_states: ["Todo", "In Progress", "Merging", "Rework"],
+      tracker_terminal_states: ["Done"]
+    )
+
+    assert :ok = Config.validate!()
+    settings = Config.settings!()
+    assert settings.tracker.kind == "github"
+    assert settings.tracker.owner == "jporcenaluk"
+    assert settings.tracker.project_number == 2
+    assert settings.tracker.repo_owner == "jporcenaluk"
+    assert settings.tracker.repo_name == "symphony"
+    assert settings.tracker.status_field == "Status"
+    assert settings.tracker.priority_field == "Priority"
+
+    assert settings.tracker.priority_order == [
+             "P0",
+             "Urgent",
+             "Critical",
+             "P1",
+             "High",
+             "P2",
+             "Medium",
+             "P3",
+             "Low"
+           ]
+  end
+
+  test "github tracker config rejects missing required fields" do
+    write_workflow_file!(Workflow.workflow_file_path(),
+      tracker_kind: "github",
+      tracker_owner: nil,
+      tracker_project_number: nil,
+      tracker_repo_owner: nil,
+      tracker_repo_name: nil
+    )
+
+    assert {:error, :missing_github_project_owner} = Config.validate!()
+  end
+
   test "current WORKFLOW.md file is valid and complete" do
     original_workflow_path = Workflow.workflow_file_path()
     on_exit(fn -> Workflow.set_workflow_file_path(original_workflow_path) end)
@@ -98,14 +146,19 @@ defmodule SymphonyElixir.CoreTest do
 
     tracker = Map.get(config, "tracker", %{})
     assert is_map(tracker)
-    assert Map.get(tracker, "kind") == "linear"
-    assert is_binary(Map.get(tracker, "project_slug"))
+    assert Map.get(tracker, "kind") == "github"
+    assert Map.get(tracker, "owner") == "jporcenaluk"
+    assert Map.get(tracker, "project_number") == 2
+    assert Map.get(tracker, "repo_owner") == "jporcenaluk"
+    assert Map.get(tracker, "repo_name") == "symphony"
+    assert Map.get(tracker, "status_field") == "Status"
+    assert Map.get(tracker, "priority_field") == "Priority"
     assert is_list(Map.get(tracker, "active_states"))
     assert is_list(Map.get(tracker, "terminal_states"))
 
     hooks = Map.get(config, "hooks", %{})
     assert is_map(hooks)
-    assert Map.get(hooks, "after_create") =~ "git clone --depth 1 https://github.com/openai/symphony ."
+    assert Map.get(hooks, "after_create") =~ "git clone --depth 1 https://github.com/jporcenaluk/symphony ."
     assert Map.get(hooks, "after_create") =~ "cd elixir && mise trust"
     assert Map.get(hooks, "after_create") =~ "mise exec -- mix deps.get"
     assert Map.get(hooks, "before_remove") =~ "cd elixir && mise exec -- mix workspace.before_remove"
@@ -1083,7 +1136,7 @@ defmodule SymphonyElixir.CoreTest do
 
     prompt = PromptBuilder.build_prompt(issue, attempt: 2)
 
-    assert prompt =~ "You are working on a Linear ticket `MT-616`"
+    assert prompt =~ "You are working on a GitHub issue `MT-616` managed by a GitHub Projects v2 board."
     assert prompt =~ "Issue context:"
     assert prompt =~ "Identifier: MT-616"
     assert prompt =~ "Title: Use rich templates for WORKFLOW.md"

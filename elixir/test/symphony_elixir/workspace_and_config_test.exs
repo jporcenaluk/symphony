@@ -295,13 +295,14 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert :ok = Workspace.remove_issue_workspaces(nil)
   end
 
-  test "linear issue helpers" do
+  test "tracker issue helpers" do
     issue = %Issue{
       id: "abc",
       labels: ["frontend", "infra"],
       assigned_to_worker: false
     }
 
+    assert %SymphonyElixir.Tracker.Issue{} = issue
     assert Issue.label_names(issue) == ["frontend", "infra"]
     assert issue.labels == ["frontend", "infra"]
     refute issue.assigned_to_worker

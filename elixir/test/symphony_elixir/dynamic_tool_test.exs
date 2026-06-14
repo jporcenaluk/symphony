@@ -22,6 +22,33 @@ defmodule SymphonyElixir.Codex.DynamicToolTest do
     assert description =~ "Linear"
   end
 
+  test "tool_specs advertises github_graphql for github tracker configs" do
+    write_workflow_file!(Workflow.workflow_file_path(),
+      tracker_kind: "github",
+      tracker_owner: "jporcenaluk",
+      tracker_project_number: 2,
+      tracker_repo_owner: "jporcenaluk",
+      tracker_repo_name: "symphony"
+    )
+
+    assert [
+             %{
+               "description" => description,
+               "inputSchema" => %{
+                 "properties" => %{
+                   "query" => _,
+                   "variables" => _
+                 },
+                 "required" => ["query"],
+                 "type" => "object"
+               },
+               "name" => "github_graphql"
+             }
+           ] = DynamicTool.tool_specs()
+
+    assert description =~ "GitHub"
+  end
+
   test "unsupported tools return a failure payload with the supported tool list" do
     response = DynamicTool.execute("not_a_real_tool", %{})
 
@@ -63,6 +90,55 @@ defmodule SymphonyElixir.Codex.DynamicToolTest do
     assert response["success"] == true
     assert Jason.decode!(response["output"]) == %{"data" => %{"viewer" => %{"id" => "usr_123"}}}
     assert response["contentItems"] == [%{"type" => "inputText", "text" => response["output"]}]
+  end
+
+  test "github_graphql returns successful GraphQL responses as tool text" do
+    write_workflow_file!(Workflow.workflow_file_path(),
+      tracker_kind: "github",
+      tracker_owner: "jporcenaluk",
+      tracker_project_number: 2,
+      tracker_repo_owner: "jporcenaluk",
+      tracker_repo_name: "symphony"
+    )
+
+    response =
+      DynamicTool.execute(
+        "github_graphql",
+        %{"query" => "query Viewer { viewer { login } }"},
+        github_client: fn query, variables, opts ->
+          send(self(), {:github_client_called, query, variables, opts})
+          {:ok, %{"data" => %{"viewer" => %{"login" => "jporcenaluk"}}}}
+        end
+      )
+
+    assert_received {:github_client_called, "query Viewer { viewer { login } }", %{}, []}
+    assert response["success"] == true
+    assert Jason.decode!(response["output"]) == %{"data" => %{"viewer" => %{"login" => "jporcenaluk"}}}
+  end
+
+  test "github_graphql formats missing project scope" do
+    write_workflow_file!(Workflow.workflow_file_path(),
+      tracker_kind: "github",
+      tracker_owner: "jporcenaluk",
+      tracker_project_number: 2,
+      tracker_repo_owner: "jporcenaluk",
+      tracker_repo_name: "symphony"
+    )
+
+    response =
+      DynamicTool.execute(
+        "github_graphql",
+        %{"query" => "query Viewer { viewer { login } }"},
+        github_client: fn _query, _variables, _opts -> {:error, :missing_github_project_scope} end
+      )
+
+    assert response["success"] == false
+
+    assert Jason.decode!(response["output"]) == %{
+             "error" => %{
+               "message" => "GitHub Project access is missing. Run `gh auth refresh -h github.com -s project`."
+             }
+           }
   end
 
   test "linear_graphql accepts a raw GraphQL query string" do
