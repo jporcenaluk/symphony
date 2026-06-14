@@ -338,7 +338,7 @@ defmodule SymphonyElixir.Config.Schema do
   def resolve_runtime_turn_sandbox_policy(settings, workspace \\ nil, opts \\ []) do
     case settings.codex.turn_sandbox_policy do
       %{} = policy ->
-        {:ok, policy}
+        resolve_explicit_runtime_turn_sandbox_policy(policy, settings, workspace, opts)
 
       _ ->
         workspace
@@ -346,6 +346,29 @@ defmodule SymphonyElixir.Config.Schema do
         |> default_runtime_turn_sandbox_policy(opts)
     end
   end
+
+  defp resolve_explicit_runtime_turn_sandbox_policy(policy, settings, workspace, opts) do
+    if workspace_write_policy_needs_writable_roots?(policy) do
+      with {:ok, default_policy} <-
+             workspace
+             |> default_workspace_root(settings.workspace.root)
+             |> default_runtime_turn_sandbox_policy(opts) do
+        {:ok, Map.put(policy, "writableRoots", Map.fetch!(default_policy, "writableRoots"))}
+      end
+    else
+      {:ok, policy}
+    end
+  end
+
+  defp workspace_write_policy_needs_writable_roots?(policy) do
+    policy_value(policy, "type") == "workspaceWrite" and
+      empty_writable_roots?(policy_value(policy, "writableRoots"))
+  end
+
+  defp empty_writable_roots?(roots), do: roots in [nil, []]
+
+  defp policy_value(policy, "type"), do: Map.get(policy, "type") || Map.get(policy, :type)
+  defp policy_value(policy, "writableRoots"), do: Map.get(policy, "writableRoots") || Map.get(policy, :writableRoots)
 
   @spec normalize_issue_state(String.t()) :: String.t()
   def normalize_issue_state(state_name) when is_binary(state_name) do
