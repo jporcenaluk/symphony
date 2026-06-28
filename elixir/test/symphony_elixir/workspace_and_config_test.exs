@@ -828,6 +828,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert config.codex.turn_timeout_ms == 3_600_000
     assert config.codex.read_timeout_ms == 5_000
     assert config.codex.stall_timeout_ms == 300_000
+    assert config.codex.required_skills == []
 
     write_workflow_file!(Workflow.workflow_file_path(),
       tracker_required_labels: [" Symphony ", "SYMPHONY", "JavaScript"]
@@ -951,6 +952,67 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
 
     write_workflow_file!(Workflow.workflow_file_path(), codex_command: "codex app-server")
     assert Config.settings!().codex.command == "codex app-server"
+  end
+
+  test "config reads required Codex skills and reports missing entries" do
+    skills_root =
+      Path.join(
+        System.tmp_dir!(),
+        "symphony-elixir-required-skills-#{System.unique_integer([:positive])}"
+      )
+
+    existing_skill = Path.join([skills_root, "skills", "gh"])
+    File.mkdir_p!(existing_skill)
+    File.write!(Path.join(existing_skill, "SKILL.md"), "---\nname: gh\n---\n")
+
+    on_exit(fn -> File.rm_rf(skills_root) end)
+
+    write_workflow_file!(Workflow.workflow_file_path(),
+      codex_required_skills: [" gh ", "verification-before-completion", "gh"]
+    )
+
+    assert Config.settings!().codex.required_skills == ["gh", "verification-before-completion"]
+
+    assert Config.missing_required_skills([Path.join(skills_root, "skills")]) == [
+             "verification-before-completion"
+           ]
+
+    assert {:error, {:missing_required_skills, ["verification-before-completion"]}} =
+             Config.validate_required_skills([Path.join(skills_root, "skills")])
+
+    second_skill = Path.join([skills_root, "skills", "verification-before-completion"])
+    File.mkdir_p!(second_skill)
+    File.write!(
+      Path.join(second_skill, "SKILL.md"),
+      "---\nname: verification-before-completion\n---\n"
+    )
+
+    assert :ok = Config.validate_required_skills([Path.join(skills_root, "skills")])
+
+    nested_skill =
+      Path.join([
+        skills_root,
+        "plugins",
+        "cache",
+        "owner",
+        "repo",
+        "hash",
+        "skills",
+        "risk-reviewer"
+      ])
+    File.mkdir_p!(nested_skill)
+    File.write!(Path.join(nested_skill, "SKILL.md"), "---\nname: risk-reviewer\n---\n")
+
+    write_workflow_file!(Workflow.workflow_file_path(), codex_required_skills: ["risk-reviewer"])
+    assert :ok = Config.validate_required_skills([Path.join(skills_root, "plugins", "cache")])
+
+    local_skill =
+      Path.join([Path.dirname(Workflow.workflow_file_path()), ".codex", "skills", "land"])
+    File.mkdir_p!(local_skill)
+    File.write!(Path.join(local_skill, "SKILL.md"), "---\nname: land\n---\n")
+
+    write_workflow_file!(Workflow.workflow_file_path(), codex_required_skills: ["land"])
+    assert :ok = Config.validate_required_skills()
   end
 
   test "config resolves $VAR references for env-backed secret and path values" do

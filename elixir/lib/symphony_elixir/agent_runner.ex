@@ -155,10 +155,10 @@ defmodule SymphonyElixir.AgentRunner do
   defp continue_with_issue?(%Issue{id: issue_id} = issue, issue_state_fetcher) when is_binary(issue_id) do
     case issue_state_fetcher.([issue_id]) do
       {:ok, [%Issue{} = refreshed_issue | _]} ->
-        if active_issue_state?(refreshed_issue.state) and issue_routable?(refreshed_issue) do
-          {:continue, refreshed_issue}
-        else
+        if handoff_issue_state?(issue.state, refreshed_issue.state) do
           {:done, refreshed_issue}
+        else
+          continue_or_finish_issue(refreshed_issue)
         end
 
       {:ok, []} ->
@@ -167,6 +167,19 @@ defmodule SymphonyElixir.AgentRunner do
       {:error, reason} ->
         {:error, {:issue_state_refresh_failed, reason}}
     end
+  end
+
+  defp continue_or_finish_issue(%Issue{} = refreshed_issue) do
+    if active_issue_state?(refreshed_issue.state) and issue_routable?(refreshed_issue) do
+      {:continue, refreshed_issue}
+    else
+      {:done, refreshed_issue}
+    end
+  end
+
+  defp handoff_issue_state?(current_state, refreshed_state) do
+    normalize_issue_state(current_state) != normalize_issue_state(refreshed_state) and
+      normalize_issue_state(refreshed_state) in ["risk review", "merging"]
   end
 
   defp continue_with_issue?(issue, _issue_state_fetcher), do: {:done, issue}

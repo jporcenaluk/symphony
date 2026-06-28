@@ -38,7 +38,7 @@ Important boundary:
 - Symphony is a scheduler/runner and tracker reader.
 - Ticket writes (state transitions, comments, PR links) are typically performed by the coding agent
   using tools available in the workflow/runtime environment.
-- A successful run can end at a workflow-defined handoff state (for example `Human Review`), not
+- A successful run can end at a workflow-defined handoff state (for example `Risk Review`), not
   necessarily `Done`.
 
 ## 2. Goals and Non-Goals
@@ -458,6 +458,10 @@ fields locally if they want stricter startup checks.
 - `stall_timeout_ms` (integer)
   - Default: `300000` (5 minutes)
   - If `<= 0`, stall detection is disabled.
+- `required_skills` (list of strings)
+  - Default: `[]`
+  - When set, the runtime SHOULD verify that each listed skill is installed in a repo-local or
+    Codex-home skill directory visible to the Codex worker before dispatching work.
 
 ### 5.4 Prompt Template Contract
 
@@ -600,6 +604,7 @@ not require recognizing or validating extension fields unless that extension is 
 - `codex.turn_timeout_ms`: integer, default `3600000`
 - `codex.read_timeout_ms`: integer, default `5000`
 - `codex.stall_timeout_ms`: integer, default `300000`
+- `codex.required_skills`: list of strings, default `[]`
 
 ## 7. Orchestration State Machine
 

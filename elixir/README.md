@@ -49,7 +49,7 @@ tracker issue can become a dispatch candidate again after restart.
      `tracker.repo_name`.
    - The GitHub Project must have single-select `Status` and `Priority` fields.
    - The default workflow uses these Project `Status` options: "Backlog", "Todo",
-     "In Progress", "Human Review", "Merging", "Rework", and "Done".
+     "In Progress", "Risk Review", "Human Review", "Merging", "Rework", "Blocked", and "Done".
 6. Follow the instructions below to install the required runtime dependencies and start the service.
 
 ## Prerequisites
@@ -118,7 +118,7 @@ tracker:
   repo_name: symphony
   status_field: Status
   priority_field: Priority
-  active_states: [Todo, In Progress, Merging, Rework]
+  active_states: [Todo, In Progress, Risk Review, Merging, Rework]
   terminal_states: [Done]
   priority_order: [P0, Urgent, Critical, P1, High, P2, Medium, P3, Low]
 workspace:
@@ -127,10 +127,14 @@ hooks:
   after_create: |
     git clone git@github.com:your-org/your-repo.git .
 agent:
-  max_concurrent_agents: 10
-  max_turns: 20
+  max_concurrent_agents: 3
+  max_turns: 3
+  max_concurrent_agents_by_state:
+    Risk Review: 1
+    Merging: 1
 codex:
   command: codex app-server
+  required_skills: [gh, land, verification-before-completion]
 ---
 
 You are working on a GitHub issue {{ issue.identifier }}.
@@ -147,6 +151,10 @@ Notes:
 - In GitHub tracker mode, the Project `Status` field is the workflow state source of truth.
 - In GitHub tracker mode, the Project `Priority` field controls dispatch order. Native GitHub issue
   dependencies block dispatch while any `blockedBy` issue is open.
+- The default workflow sends every PR through `Risk Review` before `Merging`. `Human Review` is an
+  exception state for high uncertainty, weak evidence, or policy-sensitive changes.
+- Use `agent.max_concurrent_agents_by_state` to serialize shared stages. The default local pilot
+  keeps `Risk Review` and `Merging` at one active agent each.
 - Safer Codex defaults are used when policy fields are omitted:
   - `codex.approval_policy` defaults to `{"reject":{"sandbox_approval":true,"rules":true,"mcp_elicitations":true}}`
   - `codex.thread_sandbox` defaults to `workspace-write`
@@ -160,6 +168,10 @@ Notes:
 - Workflows that run package managers or other commands that resolve external hosts should set
   `networkAccess: true` in `codex.turn_sandbox_policy`; otherwise DNS/network access may be denied
   by the Codex turn sandbox.
+- `codex.required_skills` declares skills that must be installed in the Codex home used by Symphony
+  workers before dispatch. Symphony checks repo-local `.codex/skills`, `CODEX_HOME/skills` and
+  `CODEX_HOME/plugins/cache`, or `~/.codex/skills` and `~/.codex/plugins/cache` when `CODEX_HOME` is
+  unset, plus `~/.agents/skills`.
 - `agent.max_turns` caps how many back-to-back Codex turns Symphony will run in a single agent
   invocation when a turn completes normally but the issue is still in an active state. Default: `20`.
 - If the Markdown body is blank, Symphony uses a default prompt template that includes the issue

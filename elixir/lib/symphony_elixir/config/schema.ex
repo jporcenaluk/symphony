@@ -204,6 +204,7 @@ defmodule SymphonyElixir.Config.Schema do
       field(:turn_timeout_ms, :integer, default: 3_600_000)
       field(:read_timeout_ms, :integer, default: 5_000)
       field(:stall_timeout_ms, :integer, default: 300_000)
+      field(:required_skills, {:array, :string}, default: [])
     end
 
     @spec changeset(%__MODULE__{}, map()) :: Ecto.Changeset.t()
@@ -218,7 +219,8 @@ defmodule SymphonyElixir.Config.Schema do
           :turn_sandbox_policy,
           :turn_timeout_ms,
           :read_timeout_ms,
-          :stall_timeout_ms
+          :stall_timeout_ms,
+          :required_skills
         ],
         empty_values: []
       )
@@ -226,6 +228,16 @@ defmodule SymphonyElixir.Config.Schema do
       |> validate_number(:turn_timeout_ms, greater_than: 0)
       |> validate_number(:read_timeout_ms, greater_than: 0)
       |> validate_number(:stall_timeout_ms, greater_than_or_equal_to: 0)
+      |> update_change(:required_skills, &normalize_required_skills/1)
+    end
+
+    defp normalize_required_skills(nil), do: []
+
+    defp normalize_required_skills(skills) when is_list(skills) do
+      skills
+      |> Enum.map(&(String.trim(&1) |> String.downcase()))
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
     end
   end
 

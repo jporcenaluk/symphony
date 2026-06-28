@@ -153,8 +153,26 @@ defmodule SymphonyElixir.CoreTest do
     assert Map.get(tracker, "repo_name") == "symphony"
     assert Map.get(tracker, "status_field") == "Status"
     assert Map.get(tracker, "priority_field") == "Priority"
-    assert is_list(Map.get(tracker, "active_states"))
+    assert Map.get(tracker, "active_states") == [
+             "Todo",
+             "In Progress",
+             "Risk Review",
+             "Merging",
+             "Rework"
+           ]
     assert is_list(Map.get(tracker, "terminal_states"))
+
+    agent = Map.get(config, "agent", %{})
+    assert is_map(agent)
+    assert Map.get(agent, "max_concurrent_agents") == 3
+    assert Map.get(agent, "max_concurrent_agents_by_state") == %{
+             "Risk Review" => 1,
+             "Merging" => 1
+           }
+
+    codex = Map.get(config, "codex", %{})
+    assert is_map(codex)
+    assert Map.get(codex, "required_skills") == ["gh", "land", "verification-before-completion"]
 
     hooks = Map.get(config, "hooks", %{})
     assert is_map(hooks)
@@ -164,6 +182,13 @@ defmodule SymphonyElixir.CoreTest do
     assert Map.get(hooks, "before_remove") =~ "cd elixir && mise exec -- mix workspace.before_remove"
 
     assert String.trim(prompt) != ""
+    assert prompt =~
+             "`Risk Review` -> PR is attached and validated; run the independent merge-risk classification."
+
+    assert prompt =~
+             "Do not move directly from `In Progress` to `Merging` or `Done`; every PR must pass through `Risk Review`."
+    assert prompt =~ "### Proof Packet"
+    assert prompt =~ "Before merging, verify:"
     assert is_binary(Config.workflow_prompt())
     assert Config.workflow_prompt() == prompt
   end
@@ -686,6 +711,44 @@ defmodule SymphonyElixir.CoreTest do
 
     refreshed_issue = %{issue | labels: []}
     fetcher = fn ["issue-label-continuation"] -> {:ok, [refreshed_issue]} end
+
+    assert {:done, ^refreshed_issue} =
+             AgentRunner.continue_with_issue_for_test(issue, fetcher)
+  end
+
+  test "agent runner returns control when implementation reaches risk review" do
+    write_workflow_file!(Workflow.workflow_file_path(),
+      tracker_active_states: ["Todo", "In Progress", "Risk Review", "Merging", "Rework"]
+    )
+
+    issue = %Issue{
+      id: "issue-risk-review-handoff",
+      identifier: "MT-566",
+      title: "Stop for risk review",
+      state: "In Progress"
+    }
+
+    refreshed_issue = %{issue | state: "Risk Review"}
+    fetcher = fn ["issue-risk-review-handoff"] -> {:ok, [refreshed_issue]} end
+
+    assert {:done, ^refreshed_issue} =
+             AgentRunner.continue_with_issue_for_test(issue, fetcher)
+  end
+
+  test "agent runner returns control when risk review reaches merging" do
+    write_workflow_file!(Workflow.workflow_file_path(),
+      tracker_active_states: ["Todo", "In Progress", "Risk Review", "Merging", "Rework"]
+    )
+
+    issue = %Issue{
+      id: "issue-merge-handoff",
+      identifier: "MT-567",
+      title: "Stop for merge lane",
+      state: "Risk Review"
+    }
+
+    refreshed_issue = %{issue | state: "Merging"}
+    fetcher = fn ["issue-merge-handoff"] -> {:ok, [refreshed_issue]} end
 
     assert {:done, ^refreshed_issue} =
              AgentRunner.continue_with_issue_for_test(issue, fetcher)
