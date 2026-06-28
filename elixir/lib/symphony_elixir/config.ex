@@ -61,6 +61,23 @@ defmodule SymphonyElixir.Config do
 
   def max_concurrent_agents_for_state(_state_name), do: settings!().agent.max_concurrent_agents
 
+  @spec missing_required_skills([Path.t()] | nil) :: [String.t()]
+  def missing_required_skills(skill_roots \\ nil) do
+    skill_roots = skill_roots || default_skill_roots()
+
+    settings!().codex.required_skills
+    |> Enum.reject(&skill_available?(&1, skill_roots))
+  end
+
+  @spec validate_required_skills([Path.t()] | nil) ::
+          :ok | {:error, {:missing_required_skills, [String.t()]}}
+  def validate_required_skills(skill_roots \\ nil) do
+    case missing_required_skills(skill_roots) do
+      [] -> :ok
+      missing -> {:error, {:missing_required_skills, missing}}
+    end
+  end
+
   @spec codex_turn_sandbox_policy(Path.t() | nil) :: map()
   def codex_turn_sandbox_policy(workspace \\ nil) do
     case Schema.resolve_runtime_turn_sandbox_policy(settings!(), workspace) do
@@ -146,6 +163,56 @@ defmodule SymphonyElixir.Config do
       not is_binary(tracker.repo_owner) -> {:error, :missing_github_repo_owner}
       not is_binary(tracker.repo_name) -> {:error, :missing_github_repo_name}
       true -> :ok
+    end
+  end
+
+  defp skill_available?(skill_name, skill_roots) do
+    Enum.any?(skill_roots, fn root ->
+      skill_path = Path.join([root, skill_name, "SKILL.md"])
+      File.regular?(skill_path) or named_skill_file_exists?(root, skill_name)
+    end)
+  end
+
+  defp named_skill_file_exists?(root, skill_name) do
+    root
+    |> Path.join("**/SKILL.md")
+    |> Path.wildcard()
+    |> Enum.any?(&skill_file_named?(&1, skill_name))
+  end
+
+  defp skill_file_named?(path, skill_name) do
+    case File.read(path) do
+      {:ok, content} -> Regex.match?(~r/^name:\s*#{Regex.escape(skill_name)}\s*$/m, content)
+      {:error, _reason} -> false
+    end
+  end
+
+  defp default_skill_roots do
+    codex_home = System.get_env("CODEX_HOME") || Path.expand("~/.codex")
+
+    [
+      Path.join(local_skill_root(), ".codex/skills"),
+      Path.join(codex_home, "skills"),
+      Path.join(codex_home, "plugins/cache"),
+      Path.expand("~/.agents/skills")
+    ]
+  end
+
+  defp local_skill_root do
+    workflow_dir = Workflow.workflow_file_path() |> Path.dirname()
+
+    workflow_dir
+    |> ancestor_paths()
+    |> Enum.find(File.cwd!(), &File.dir?(Path.join(&1, ".codex/skills")))
+  end
+
+  defp ancestor_paths(path) do
+    parent = Path.dirname(path)
+
+    if parent == path do
+      [path]
+    else
+      [path | ancestor_paths(parent)]
     end
   end
 

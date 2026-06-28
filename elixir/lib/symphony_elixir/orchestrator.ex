@@ -252,6 +252,7 @@ defmodule SymphonyElixir.Orchestrator do
       |> reconcile_blocked_issues()
 
     with :ok <- Config.validate!(),
+         :ok <- Config.validate_required_skills(),
          {:ok, issues} <- Tracker.fetch_candidate_issues(),
          true <- available_slots(state) > 0 do
       choose_issues(issues, state)
@@ -276,6 +277,10 @@ defmodule SymphonyElixir.Orchestrator do
 
       {:error, {:invalid_workflow_config, message}} ->
         Logger.error("Invalid WORKFLOW.md config: #{message}")
+        state
+
+      {:error, {:missing_required_skills, skills}} ->
+        Logger.error("Required Codex skills missing: #{Enum.join(skills, ", ")}")
         state
 
       {:error, {:missing_workflow_file, path, reason}} ->
